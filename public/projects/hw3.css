@@ -1,0 +1,12 @@
+
+#title {
+    margin-top: 25px;
+    text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.p3-container {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}

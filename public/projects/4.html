@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<link rel="stylesheet" href="hw3.css">
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon" />
+
+	<link rel="stylesheet" type="text/css" href="../css/bootstrap.css" />
+	<link
+			rel="stylesheet"
+			type="text/css"
+			href="../fonts/font-awesome/css/font-awesome.css"
+	/>
+	<link rel="stylesheet" type="text/css" href="../css/style.css" />
+	<link
+			rel="stylesheet"
+			type="text/css"
+			href="../css/nivo-lightbox/nivo-lightbox.css"
+	/>
+	<link rel="stylesheet" type="text/css" href="../css/nivo-lightbox/default.css" />
+	<link
+			href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700"
+			rel="stylesheet"
+	/>
+	<link
+			href="https://fonts.googleapis.com/css?family=Lato:400,700"
+			rel="stylesheet"
+	/>
+	<link
+			href="https://fonts.googleapis.com/css?family=Raleway:300,400,500,600,700,800,900"
+			rel="stylesheet"
+	/>
+	<title>Haden Lee</title>
+	<meta name="description" content="" />
+	<meta name="author" content="@HadenLee" />
+
+			<script src="js/d3.v4.js"></script>
+			<script src="js/d3-tip.js"></script>
+
+			<style>
+			body{
+				padding:0px;
+				margin:0px;
+			}
+
+			.chartbar{
+				width:1100px;
+				margin:auto;
+			}
+			.tipbar{
+				border-radius:10px;
+				width:180px;
+				padding:10px;
+				background:#336699;
+				color:#fff;
+				z-index:100;
+				pointer-events: none;
+			}
+			.tipbar div:nth-child(1){
+				font-size:14px;
+				font-weight:bold;
+				padding-bottom:10px;
+			}
+			.tipbar div:nth-child(n+2){
+				font-size:11px;
+				line-height:20px;
+			}
+			.tipbar div:nth-child(n+2){
+				display:flex;
+			}
+			.tipbar div span:nth-child(1){
+				text-align:right;
+				width:80px;
+				font-weight:bold;
+			}
+			.tipbar div span:nth-child(2){
+				padding-left:10px;
+			}
+			</style>
+
+	<script>
+	
+	var tipBar;
+	function init(){
+		//init tooltip
+		tipBar = d3.tip()
+		.attr("class","tipbar")
+		.offset([-5, 0])
+		.html(function(d){return setTipHtml(d);});
+
+		loadChart();
+	}
+
+	//Tooltip showing data
+	function setTipHtml(id){
+		var date = new Date(timeArray[id]);
+		var year = date.getFullYear();
+		var m = date.getMonth()+1;
+		var d = date.getDate();
+		html = "<div>"+"Value"+"</div>"+
+			"<div><span>"+chartData[0].symbol+":</span><span>"+chartData[0].high[id]+"</span></div>"+
+			"<div><span>"+chartData[1].symbol+":</span><span>"+chartData[1].high[id]+"</span></div>"+
+			"<div><span>"+chartData[2].symbol+":</span><span>"+chartData[2].high[id]+"</span></div>"+
+			"<div><span>"+chartData[3].symbol+":</span><span>"+chartData[3].high[id]+"</span></div>"+
+			"<div><span>Date:</span><span>"+year+"-"+m+"-"+d+"</span></div>";
+		return html;
+	}
+	
+	var chartData;
+	var timeArray = [];
+	var colors = ["#3399ff","#669900","#ff00cc","#003399"];
+	//Load Data
+	function loadChart(){
+		var top = 70;
+		var bottom = 100;
+		var left = 50;
+		var cRight = 100;
+		var width = 1100;
+		var height = 500;
+
+		var svg = d3.select("#chartSvg").attr("width", width).attr("height", height);
+
+		svg.call(tipBar);
+
+		d3.json("data/finance.json",function(res){
+			var data = res.chart.result[0];
+			chartData = data.comparisons;
+			console.log(data.comparisons)
+			//console.log(data.timestamp)
+
+			//Unix Date transform
+			for(var i=0;i<data.timestamp.length;i++){
+				timeArray.push(data.timestamp[i]*1000);
+			}
+			var sd = new Date(timeArray[0]);
+			var ed = new Date(timeArray[timeArray.length-1]);
+
+			//x axis
+			var xScale = d3.scaleTime()
+				.range([left,width-cRight])
+				.domain([sd,ed])
+			var xAxis = d3.axisBottom(xScale).tickFormat(d3.timeFormat("%x"));
+			svg.append("g")
+				.attr("transform", "translate(0,"+(height-bottom+top)+")")
+				.call(xAxis)
+			
+			//y axis
+			var max = Math.max(d3.max(data.comparisons[0].high,function(d){return d}),
+			d3.max(data.comparisons[1].high,function(d){return d}),
+			d3.max(data.comparisons[2].high,function(d){return d}),
+			d3.max(data.comparisons[3].high,function(d){return d}));
+			var yScale = d3.scaleLinear()
+				.domain([0, max])
+				.range([height-bottom,0]);
+			svg.append("g")
+				.attr("transform", "translate("+left+","+top+")")
+				.call(d3.axisLeft(yScale))
+			
+			//chart line
+			for(var i=0;i<data.comparisons.length;i++){
+				var line = svg.append("g")
+				for(var j=0;j<data.comparisons[i].high.length;j++){
+					if(j>0){
+					line.append("line")
+						.attr("x1",xScale(new Date(timeArray[j-1])))
+						.attr("x2",xScale(new Date(timeArray[j])))
+						.attr("y1",yScale(data.comparisons[i].high[j-1])+top)
+						.attr("y2",yScale(data.comparisons[i].high[j])+top)
+						.style("stroke",colors[i])
+						.style("stroke-width","1")
+					}
+					line.append("circle")
+						.attr("cx",xScale(new Date(timeArray[j])))
+						.attr("cy",yScale(data.comparisons[i].high[j])+top)
+						.attr("r",2.4)
+						.attr("fill", colors[i]);
+				}
+			}
+			
+			//tooltip line
+			var tipVLine = svg.append("g")
+				.append("line")
+				.attr("x1", -100) 
+				.attr("x2", -100) 
+				.attr("y1", top) 
+				.attr("y2", height-bottom+top)
+				.style("pointer-events","none")
+				.style("stroke-dasharray","5,5")
+				.style("stroke", "#666");
+			
+				//tooltip line
+			var tipHLine = svg.append("g")
+				.append("line")
+				.attr("x1", left) 
+				.attr("x2", width-cRight) 
+				.attr("y1", -100) 
+				.attr("y2", -100)
+				.style("pointer-events","none")
+				.style("stroke-dasharray","5,5")
+				.style("stroke", "#666");
+
+
+			//tooltip
+			var chartBW = width-left-cRight+10;
+			var chartB = svg.append("g")
+			.append("rect")
+			.attr("x",left)
+			.attr("y",top)
+			.attr("width",chartBW)
+			.attr("height",height-bottom)
+			.attr("fill", "rgba(0,0,0,0)")
+			
+			var space = xScale(new Date(timeArray[3])) - xScale(new Date(timeArray[2]));
+			
+			//mousemove
+			chartB.on("mousemove", function(d){
+				var arr = d3.mouse(this);
+				for(var i=0;i<timeArray.length;i++){
+					if(Math.abs(arr[0]-xScale(new Date(timeArray[i])))<space){
+						tipVLine.attr("x1",Math.round(xScale(new Date(timeArray[i])))+0.5).attr("x2",Math.round(xScale(new Date(timeArray[i])))+0.5);
+						tipHLine.attr("y1",Math.round(arr[1])+0.5).attr("y2",Math.round(arr[1])+0.5);
+						tipBar.offset([arr[1], arr[0]-chartBW/2+50])
+						tipBar.show(i);
+						break;
+					}
+				}
+			})
+			.on("mouseout",function(d){
+				tipVLine.attr("x1",-100).attr("x2",-100);
+				tipHLine.attr("y1",-100).attr("y2",-100);
+				tipBar.hide();
+			})
+
+			//chart title
+			svg.append("g")
+				.append("text")
+				.attr("x", width/2)
+				.attr("y", 30)
+				.attr("fill","#333")
+				.attr("text-anchor","middle")
+				.attr("dominant-baseline","middle")
+				.text("Finance Chart")
+
+
+			//Dot
+			var legX = (width-400)/2;
+			for(var i=0;i<data.comparisons.length;i++){
+				svg.append("g")
+					.append("circle")
+					.attr("cx",i*100+legX)
+					.attr("cy",56)
+					.attr("r",5)
+					.attr("fill", colors[i]);
+				svg.append("g")
+					.append("text")
+					.attr("x", i*100+legX+10)
+					.attr("y", 57)
+					.attr("fill","#333")
+					.attr("text-anchor","start")
+					.attr("dominant-baseline","middle")
+					.attr("font-size",11)
+					.text(data.comparisons[i].symbol)
+			}
+		});
+	}
+	</script>
+	</head>
+<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top" onload="init();">
+	<nav id='menu' class='navbar navbar-default navbar-fixed-top'>
+		<div class='container'>
+			<div class='navbar-header'>
+				<button
+						type='button'
+						class='navbar-toggle collapsed'
+						data-toggle='collapse'
+						data-target='#bs-example-navbar-collapse-1'
+				>
+
+					<span class='sr-only'>Toggle navigation</span>{' '}
+					<span class='icon-bar'></span>{' '}
+					<span class='icon-bar'></span>{' '}
+					<span class='icon-bar'></span>{' '}
+				</button>
+				<a class='navbar-brand page-scroll' href='/'>
+					Haden Lee
+				</a>
+			</div>
+
+			<div
+					class='collapse navbar-collapse'
+					id='bs-example-navbar-collapse-1'
+			>
+				<ul class='nav navbar-nav navbar-right'>
+					<li>
+						<a href='/' class='page-scroll'>
+							BACK TO HOME
+						</a>
+					</li>
+
+
+				</ul>
+			</div>
+		</div>
+	</nav>
+	<div class="container" style="margin-top:85px">
+			<div class="chartbar">
+				<svg id="chartSvg"></svg>
+			</div>
+	</div>
+	<div>
+		<div id='footer'>
+			<div class='container text-center'>
+				<p>
+					&copy; HADEN LEE 2022
+				</p>
+			</div>
+		</div>
+	</div>
+	<script src="hw3.js"></script>
+	<script type="text/javascript" src="../js/jquery.1.11.1.js"></script>
+	<script type="text/javascript" src="../js/bootstrap.js"></script>
+</body>
+</html>
